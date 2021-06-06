@@ -23,7 +23,7 @@
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
-
+#include "adc.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -117,13 +117,14 @@ int main(void)
     MX_USART2_UART_Init();
     MX_TIM4_Init();
     MX_TIM2_Init();
+    MX_ADC1_Init();
     /* USER CODE BEGIN 2 */
     accelSensorInitialization();
     enginesControlInitialization();
     rangeSensorInitialization();
 
     HAL_UART_Receive_IT(&huart2, (uint8_t*) str, 8);
-    char str_uart[9] = {0};
+    //char str_uart[9] = {0};
     
     HAL_TIM_Base_Start_IT(&htim2);
     /* USER CODE END 2 */
@@ -132,13 +133,17 @@ int main(void)
     while (1){ 
         // PWM max 65535
         // Normal 10000
-        refreshAccelValues();
 
-        if(mode == 1){
-            sendAccelValues();
+        if(mode != 2){
+            refreshAccelValues();
+            if(mode == 1){
+                sendAccelValues();
+            }
+            enginesPowerComputation(myAccelRaw);
+        } else {
+            uint8_t batteryLowMsg[] = "\n\rBattery is too low";
+            sendStringByUART(batteryLowMsg, 21);
         }
-        
-        enginesPowerComputation(myAccelRaw);
 
         /* USER CODE END WHILE */
 
@@ -334,12 +339,27 @@ void UART2_RxCpltCallback(){
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
+    checkBatteryVoltageLevel();
     if(htim == &htim2) {
         // HAL_UART_Transmit(&huart2,(uint8_t*)str2[i],strlen(str2[i]),0x1000);
         // i++;
         // if(i>4) {
         //     i=0;
         // }
+    }
+}
+
+void checkBatteryVoltageLevel(){
+    int adc_value = 0;
+    HAL_ADC_Start(&hadc1); 
+    if(HAL_ADC_PollForConversion(&hadc1, 7) == HAL_OK){ 
+        adc_value  = HAL_ADC_GetValue(&hadc1); 
+    }
+    HAL_ADC_Stop(&hadc1);
+    if(adc_value < 256){ // 256/4095
+        mode = 2;
+    } else if (mode == 2 && adc_value > 256){
+        mode = 0;
     }
 }
 

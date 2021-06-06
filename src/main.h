@@ -70,7 +70,7 @@ void enginesControlInitialization(void);
 void sendAccelValues(void);
 void UART2_RxCpltCallback(void);
 void string_parse(char* buf_str);
-
+void checkBatteryVoltageLevel(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
